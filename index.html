@@ -4,177 +4,351 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>iRolodex</title>
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-subtle: #94a3b8;
+      --accent: #0284c7;
+      --accent-soft: #e0f2fe;
+      --pill-bg: #f1f5f9;
+      --pill-active-bg: #0f172a;
+      --pill-active-text: #ffffff;
+      --wikilink: #0284c7;
+    }
+
+    [data-theme="dark"] {
       --bg: #09090b;
-      --card-bg: #18181b;
+      --card-bg: #141417;
       --border: #27272a;
       --text: #f4f4f5;
       --text-muted: #a1a1aa;
+      --text-subtle: #52525b;
       --accent: #38bdf8;
-      --tag-bg: #27272a;
+      --accent-soft: #082f49;
+      --pill-bg: #1f1f23;
+      --pill-active-bg: #38bdf8;
+      --pill-active-text: #000000;
+      --wikilink: #38bdf8;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      transition: background 0.15s ease, color 0.15s ease;
     }
+
     header {
-      padding: 12px 16px;
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    .header-title { font-size: 1.1rem; font-weight: 700; }
-    .status-badge {
-      font-size: 0.75rem;
-      padding: 2px 8px;
-      border-radius: 12px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
-    .status-badge.online { color: #4ade80; border-color: #22c55e44; }
-    .nav-btn {
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .action-icon {
       background: none;
       border: none;
-      color: var(--accent);
-      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
       cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
     }
-    .search-bar {
-      padding: 12px 16px;
+
+    .action-icon:active { opacity: 0.6; }
+
+    .search-panel {
+      padding: 12px 18px 8px 18px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       border-bottom: 1px solid var(--border);
+      background: var(--bg);
     }
+
     input[type="text"], input[type="password"] {
       width: 100%;
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 10px 14px;
       color: var(--text);
       font-size: 0.95rem;
       outline: none;
+      transition: border-color 0.15s;
     }
-    .filters { display: flex; gap: 8px; }
-    .filter-btn {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
+
+    input:focus { border-color: var(--accent); }
+
+    .horizontal-scroll-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+    }
+
+    .horizontal-scroll-row::-webkit-scrollbar { display: none; }
+
+    .pill {
+      flex: 0 0 auto;
+      background: var(--pill-bg);
       color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 0.78rem;
+      font-weight: 500;
       cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: all 0.1s ease;
     }
-    .filter-btn.active {
-      background: var(--accent);
-      color: #000;
+
+    .pill.active {
+      background: var(--pill-active-bg);
+      color: var(--pill-active-text);
+      border-color: transparent;
       font-weight: 600;
-      border-color: var(--accent);
     }
-    main { flex: 1; overflow-y: auto; padding: 12px 16px; }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 18px 40px 18px;
+    }
+
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
+      border-radius: 12px;
+      padding: 14px 16px;
       margin-bottom: 10px;
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transition: transform 0.08s ease, border-color 0.15s;
     }
-    .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 2px; }
-    .card-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
-    .tag-container { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tag {
-      background: var(--tag-bg);
+
+    .card:active { transform: scale(0.99); }
+
+    .card-top-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .card-category {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .card-subtitle {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .tag-item {
       color: var(--accent);
       font-size: 0.75rem;
-      padding: 2px 6px;
-      border-radius: 4px;
+      font-weight: 500;
     }
+
     .view { display: none; }
     .view.active { display: block; }
-    /* Detail View Styling */
-    .detail-header { margin-bottom: 16px; }
-    .detail-name { font-size: 1.4rem; font-weight: 700; }
-    .detail-sub { font-size: 0.95rem; color: var(--text-muted); margin-top: 2px; }
-    .meta-box {
+
+    /* Detail View */
+    .detail-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .detail-title {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .detail-category-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .detail-subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .meta-card {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 20px;
-      font-size: 0.85rem;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 22px;
+      font-size: 0.86rem;
     }
-    .meta-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #27272a55; }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
     .meta-row:last-child { border-bottom: none; }
-    .meta-label { color: var(--text-muted); }
-    .markdown-body { font-size: 0.95rem; line-height: 1.6; color: #d4d4d8; }
-    .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: var(--text); margin: 16px 0 8px 0; }
-    .markdown-body ul { padding-left: 20px; margin-bottom: 12px; }
-    .markdown-body p { margin-bottom: 12px; }
+    .meta-label { color: var(--text-muted); font-weight: 500; }
+    .meta-val { color: var(--text); font-weight: 500; text-align: right; }
+
+    .markdown-body {
+      font-size: 0.96rem;
+      line-height: 1.65;
+      color: var(--text);
+    }
+
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+      color: var(--text);
+      margin: 20px 0 10px 0;
+      letter-spacing: -0.015em;
+    }
+
+    .markdown-body h2 { font-size: 1.15rem; }
+    .markdown-body h3 { font-size: 1.02rem; }
+    .markdown-body ul { padding-left: 20px; margin-bottom: 14px; }
+    .markdown-body p { margin-bottom: 14px; }
+
+    /* Wikilinks */
+    a.wikilink {
+      color: var(--wikilink);
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px dotted var(--wikilink);
+      cursor: pointer;
+    }
+
+    span.wikilink-broken {
+      color: var(--text-subtle);
+      font-style: italic;
+    }
+
     .btn {
       width: 100%;
       background: var(--accent);
-      color: #000;
+      color: #ffffff;
       border: none;
       padding: 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-weight: 600;
       font-size: 0.95rem;
       cursor: pointer;
       margin-top: 10px;
     }
-    .danger-btn { background: #ef4444; color: #fff; margin-top: 10px; }
+
+    [data-theme="dark"] .btn { color: #000000; }
+    .btn.danger { background: #ef4444; color: #ffffff; margin-top: 10px; }
   </style>
 </head>
 <body>
 
-  <!-- Home / List View -->
+  <!-- Home / Directory View -->
   <div id="view-list" class="view active">
     <header>
-      <span class="header-title">iRolodex</span>
-      <div>
-        <span id="conn-status" class="status-badge">Offline</span>
-        <button class="nav-btn" onclick="showSettings()" style="margin-left: 8px;">Config</button>
+      <span class="brand-title">iRolodex</span>
+      <div class="header-actions">
+        <button class="action-icon" id="theme-toggle" onclick="cycleTheme()">Theme</button>
+        <button class="action-icon" onclick="showSettings()">Config</button>
       </div>
     </header>
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="Search people, tags, orgs..." oninput="handleSearch()">
-      <div class="filters">
-        <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">All</button>
-        <button class="filter-btn" id="filter-person" onclick="setFilter('person')">People</button>
-        <button class="filter-btn" id="filter-org" onclick="setFilter('org')">Orgs</button>
-      </div>
+
+    <div class="search-panel">
+      <input type="text" id="search-input" placeholder="Search people, tags, notes..." oninput="handleSearch()">
+      
+      <!-- Category Selector Row -->
+      <div class="horizontal-scroll-row" id="category-pills"></div>
+
+      <!-- Tag Selector Row -->
+      <div class="horizontal-scroll-row" id="tag-pills"></div>
     </div>
+
     <main id="contacts-container"></main>
   </div>
 
   <!-- Detail View -->
   <div id="view-detail" class="view">
     <header>
-      <button class="nav-btn" onclick="showList()">← Back</button>
-      <span class="header-title" id="detail-header-title">Record</span>
-      <div style="width: 40px;"></div>
+      <button class="action-icon" onclick="popNavigation()">← Back</button>
+      <span class="brand-title" id="det-header-title" style="font-size: 1rem;">Note</span>
+      <div style="width: 48px;"></div>
     </header>
     <main>
-      <div class="detail-header">
-        <div class="detail-name" id="det-name"></div>
-        <div class="detail-sub" id="det-sub"></div>
+      <div class="detail-top-bar">
+        <div class="detail-title" id="det-name"></div>
+        <div class="detail-category-badge" id="det-category-badge" style="display: none;"></div>
       </div>
-      <div class="meta-box" id="det-meta"></div>
+      <div class="detail-subtitle" id="det-sub"></div>
+      <div class="meta-card" id="det-meta"></div>
       <div class="markdown-body" id="det-content"></div>
     </main>
   </div>
@@ -182,54 +356,56 @@
   <!-- Settings View -->
   <div id="view-settings" class="view">
     <header>
-      <button class="nav-btn" onclick="showList()">← Done</button>
-      <span class="header-title">GitHub Config</span>
-      <div style="width: 40px;"></div>
+      <button class="action-icon" onclick="showList()">← Done</button>
+      <span class="brand-title" style="font-size: 1rem;">Configuration</span>
+      <div style="width: 48px;"></div>
     </header>
     <main style="display: flex; flex-direction: column; gap: 14px; padding-top: 20px;">
       <div>
-        <label style="font-size: 0.8rem; color: var(--text-muted);">Personal Access Token (fine-grained repo scope)</label>
+        <label style="font-size: 0.8rem; color: var(--text-muted);">Personal Access Token (Read-only)</label>
         <input type="password" id="cfg-pat" placeholder="github_pat_...">
       </div>
       <div>
-        <label style="font-size: 0.8rem; color: var(--text-muted);">Repository Owner / Name</label>
-        <input type="text" id="cfg-repo" placeholder="username/notes-crm">
+        <label style="font-size: 0.8rem; color: var(--text-muted);">Repository (owner/name)</label>
+        <input type="text" id="cfg-repo" placeholder="username/notes-vault">
       </div>
       <div>
         <label style="font-size: 0.8rem; color: var(--text-muted);">Notes Subfolder (optional)</label>
-        <input type="text" id="cfg-path" placeholder="e.g. contacts or leave empty">
+        <input type="text" id="cfg-path" placeholder="e.g. contacts or crm">
       </div>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;" id="cfg-status">
-        Local Cache: Ready
+        Database ready.
       </div>
       <button class="btn" onclick="syncGithub()">Sync Now from GitHub</button>
-      <button class="btn danger-btn" onclick="clearData()">Clear Local Database</button>
+      <button class="btn danger" onclick="clearData()">Clear Local Database</button>
     </main>
   </div>
 
   <script>
-    // Register Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
     }
 
-    // Network status listener
-    function updateOnlineStatus() {
-      const el = document.getElementById('conn-status');
-      if (navigator.onLine) {
-        el.textContent = 'Online';
-        el.className = 'status-badge online';
-      } else {
-        el.textContent = 'Offline';
-        el.className = 'status-badge';
-      }
+    // Theme Engine
+    function initTheme() {
+      const saved = localStorage.getItem('irolodex_theme') || 'system';
+      applyTheme(saved);
     }
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-    updateOnlineStatus();
 
-    // IndexedDB setup
-    const DB_NAME = 'PersonalCRM';
+    function applyTheme(mode) {
+      const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      document.getElementById('theme-toggle').textContent = isDark ? '☼ Light' : '☽ Dark';
+    }
+
+    function cycleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('irolodex_theme', cur);
+      applyTheme(cur);
+    }
+
+    // IndexedDB Setup
+    const DB_NAME = 'iRolodexDB';
     const STORE_NAME = 'records';
     let db;
 
@@ -237,15 +413,12 @@
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, 1);
         req.onupgradeneeded = (e) => {
-          const dbInstance = e.target.result;
-          if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
-            dbInstance.createObjectStore(STORE_NAME, { keyPath: 'path' });
+          const instance = e.target.result;
+          if (!instance.objectStoreNames.contains(STORE_NAME)) {
+            instance.createObjectStore(STORE_NAME, { keyPath: 'path' });
           }
         };
-        req.onsuccess = (e) => {
-          db = e.target.result;
-          resolve(db);
-        };
+        req.onsuccess = (e) => { db = e.target.result; resolve(db); };
         req.onerror = (e) => reject(e);
       });
     }
@@ -253,8 +426,7 @@
     function getAllRecords() {
       return new Promise((resolve) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
+        const req = tx.objectStore(STORE_NAME).getAll();
         req.onsuccess = () => resolve(req.result || []);
       });
     }
@@ -267,7 +439,7 @@
       });
     }
 
-    // Parsing helper for Markdown frontmatter
+    // Markdown Frontmatter Parser
     function parseFrontmatter(raw) {
       const match = raw.match(/^---\s*([\s\S]*?)\s*---\s*([\s\S]*)$/);
       if (!match) return { meta: {}, content: raw };
@@ -279,7 +451,7 @@
       yamlStr.split('\n').forEach(line => {
         const idx = line.indexOf(':');
         if (idx > -1) {
-          const key = line.slice(0, idx).trim();
+          const key = line.slice(0, idx).trim().toLowerCase();
           let val = line.slice(idx + 1).trim();
           if (val.startsWith('[') && val.endsWith(']')) {
             val = val.slice(1, -1).split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
@@ -292,50 +464,146 @@
       return { meta, content };
     }
 
-    // Navigation state
+    // Wikilink Parser: [[Note Name]] or [[Note Name|Alias]]
+    function resolveWikilinks(markdownText) {
+      return markdownText.replace(/\[\[([^\]\Vert{}]+)(?:\Vert{}([^\]]+))?\]\]/g, (match, target, alias) => {
+        const cleanTarget = target.trim();
+        const displayLabel = (alias || cleanTarget).trim();
+        
+        const targetSlug = cleanTarget.toLowerCase();
+        const found = allRecords.find(r => {
+          const filename = r.path.split('/').pop().replace(/\.md$/i, '').toLowerCase();
+          const recordName = (r.meta.name || '').toLowerCase();
+          return filename === targetSlug || recordName === targetSlug;
+        });
+
+        if (found) {
+          return `<a href="javascript:void(0)" class="wikilink" onclick="navigateToDetail('${found.path}')">${displayLabel}</a>`;
+        } else {
+          return `<span class="wikilink-broken">${displayLabel}</span>`;
+        }
+      });
+    }
+
+    // State & Navigation Stack
     let allRecords = [];
-    let currentFilter = 'all';
+    let selectedCategory = 'all';
+    let selectedTag = 'all';
+    let navHistory = [];
+
+    function pushNavigation(path) {
+      navHistory.push(path);
+      renderDetail(path);
+    }
+
+    function popNavigation() {
+      navHistory.pop();
+      if (navHistory.length > 0) {
+        renderDetail(navHistory[navHistory.length - 1]);
+      } else {
+        showList();
+      }
+    }
+
+    function navigateToDetail(path) {
+      pushNavigation(path);
+    }
 
     function showList() {
+      navHistory = [];
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-list').classList.add('active');
     }
 
     function showSettings() {
-      document.getElementById('cfg-pat').value = localStorage.getItem('crm_pat') || '';
-      document.getElementById('cfg-repo').value = localStorage.getItem('crm_repo') || '';
-      document.getElementById('cfg-path').value = localStorage.getItem('crm_path') || '';
+      document.getElementById('cfg-pat').value = localStorage.getItem('irolodex_pat') || '';
+      document.getElementById('cfg-repo').value = localStorage.getItem('irolodex_repo') || '';
+      document.getElementById('cfg-path').value = localStorage.getItem('irolodex_path') || '';
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-settings').classList.add('active');
     }
 
-    function showDetail(path) {
+    function renderDetail(path) {
       const item = allRecords.find(r => r.path === path);
       if (!item) return;
 
-      document.getElementById('det-name').textContent = item.meta.name || item.path.split('/').pop().replace(/\.md$/, '');
-      document.getElementById('det-sub').textContent = [item.meta.role, item.meta.organization].filter(Boolean).join(' @ ');
+      const title = item.meta.name || item.path.split('/').pop().replace(/\.md$/i, '');
+      const subtitle = [item.meta.role, item.meta.organization].filter(Boolean).join(' @ ');
+      const category = item.meta.category || item.meta.type;
 
-      const metaHtml = Object.entries(item.meta)
-        .filter(([k]) => !['name', 'role', 'organization', 'type'].includes(k))
+      document.getElementById('det-name').textContent = title;
+      document.getElementById('det-sub').textContent = subtitle;
+
+      const catBadge = document.getElementById('det-category-badge');
+      if (category) {
+        catBadge.textContent = category;
+        catBadge.style.display = 'block';
+      } else {
+        catBadge.style.display = 'none';
+      }
+
+      // Metadata card
+      const excludeKeys = ['name', 'role', 'organization', 'type', 'category', 'tags'];
+      const metaRows = Object.entries(item.meta)
+        .filter(([k]) => !excludeKeys.includes(k))
         .map(([k, v]) => `
           <div class="meta-row">
-            <span class="meta-label">${k}</span>
-            <span>${Array.isArray(v) ? v.join(', ') : v}</span>
+            <span class="meta-label">${k.charAt(0).toUpperCase() + k.slice(1)}</span>
+            <span class="meta-val">${Array.isArray(v) ? v.join(', ') : v}</span>
           </div>
         `).join('');
-      document.getElementById('det-meta').innerHTML = metaHtml || '<div style="color:var(--text-muted)">No additional metadata</div>';
 
-      document.getElementById('det-content').innerHTML = marked.parse(item.content);
+      document.getElementById('det-meta').innerHTML = metaRows || '<div style="color:var(--text-muted); text-align:center;">No custom metadata attributes</div>';
+
+      const linkedContent = resolveWikilinks(item.content);
+      document.getElementById('det-content').innerHTML = marked.parse(linkedContent);
 
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-detail').classList.add('active');
     }
 
-    function setFilter(type) {
-      currentFilter = type;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('filter-' + type).classList.add('active');
+    // Taxonomy Extractors
+    function updateSelectors() {
+      const categories = new Set();
+      const tags = new Set();
+
+      allRecords.forEach(r => {
+        const cat = r.meta.category || r.meta.type;
+        if (cat) categories.add(cat.trim());
+
+        const t = r.meta.tags;
+        if (Array.isArray(t)) t.forEach(tag => tags.add(tag.trim()));
+        else if (t) t.split(',').forEach(tag => tags.add(tag.trim()));
+      });
+
+      // Render Category Row
+      const catContainer = document.getElementById('category-pills');
+      const catList = ['all', ...Array.from(categories)];
+      catContainer.innerHTML = catList.map(cat => `
+        <button class="pill ${selectedCategory === cat ? 'active' : ''}" onclick="selectCategory('${cat}')">
+          ${cat === 'all' ? 'All' : cat}
+        </button>
+      `).join('');
+
+      // Render Tag Row
+      const tagContainer = document.getElementById('tag-pills');
+      const tagList = ['all', ...Array.from(tags)];
+      tagContainer.innerHTML = tagList.map(t => `
+        <button class="pill ${selectedTag === t ? 'active' : ''}" onclick="selectTag('${t}')">
+          ${t === 'all' ? 'All Tags' : '#' + t}
+        </button>
+      `).join('');
+    }
+
+    function selectCategory(cat) {
+      selectedCategory = cat;
+      updateSelectors();
+      renderList();
+    }
+
+    function selectTag(tag) {
+      selectedTag = tag;
+      updateSelectors();
       renderList();
     }
 
@@ -348,34 +616,46 @@
       const container = document.getElementById('contacts-container');
 
       const filtered = allRecords.filter(r => {
-        const type = (r.meta.type || 'person').toLowerCase();
-        if (currentFilter !== 'all' && type !== currentFilter) return false;
+        const cat = (r.meta.category || r.meta.type || '').toLowerCase();
+        if (selectedCategory !== 'all' && cat !== selectedCategory.toLowerCase()) return false;
+
+        const recordTags = Array.isArray(r.meta.tags) 
+          ? r.meta.tags.map(t => t.toLowerCase()) 
+          : (r.meta.tags ? [r.meta.tags.toLowerCase()] : []);
+        if (selectedTag !== 'all' && !recordTags.includes(selectedTag.toLowerCase())) return false;
 
         if (!q) return true;
         const name = (r.meta.name || r.path).toLowerCase();
         const org = (r.meta.organization || '').toLowerCase();
         const role = (r.meta.role || '').toLowerCase();
-        const tags = Array.isArray(r.meta.tags) ? r.meta.tags.join(' ').toLowerCase() : (r.meta.tags || '').toLowerCase();
+        const tagsStr = recordTags.join(' ');
         const body = (r.content || '').toLowerCase();
-        return name.includes(q) || org.includes(q) || role.includes(q) || tags.includes(q) || body.includes(q);
+        return name.includes(q) || org.includes(q) || role.includes(q) || tagsStr.includes(q) || body.includes(q);
       });
 
       if (filtered.length === 0) {
-        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px 0;">No matching records found</div>';
+        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:48px 0;font-size:0.9rem;">No matching entries found</div>';
         return;
       }
 
       container.innerHTML = filtered.map(r => {
-        const title = r.meta.name || r.path.split('/').pop().replace(/\.md$/, '');
+        const title = r.meta.name || r.path.split('/').pop().replace(/\.md$/i, '');
         const sub = [r.meta.role, r.meta.organization].filter(Boolean).join(' @ ');
+        const category = r.meta.category || r.meta.type || '';
         const tags = Array.isArray(r.meta.tags) ? r.meta.tags : (r.meta.tags ? [r.meta.tags] : []);
+
         return `
-          <div class="card" onclick="showDetail('${r.path}')">
-            <div class="card-title">${title}</div>
-            ${sub ? `<div class="card-subtitle">${sub}</div>` : ''}
-            <div class="tag-container">
-              ${tags.map(t => `<span class="tag">#${t}</span>`).join('')}
+          <div class="card" onclick="navigateToDetail('${r.path}')">
+            <div class="card-top-row">
+              <div class="card-title">${title}</div>
+              ${category ? `<div class="card-category">${category}</div>` : ''}
             </div>
+            ${sub ? `<div class="card-subtitle">${sub}</div>` : ''}
+            ${tags.length > 0 ? `
+              <div class="card-tags">
+                ${tags.map(t => `<span class="tag-item">#${t}</span>`).join('')}
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -388,15 +668,15 @@
       const statusEl = document.getElementById('cfg-status');
 
       if (!pat || !repo) {
-        alert('Please fill out the PAT and Repository name.');
+        alert('Please provide your GitHub PAT and repository name.');
         return;
       }
 
-      localStorage.setItem('crm_pat', pat);
-      localStorage.setItem('crm_repo', repo);
-      localStorage.setItem('crm_path', prefix);
+      localStorage.setItem('irolodex_pat', pat);
+      localStorage.setItem('irolodex_repo', repo);
+      localStorage.setItem('irolodex_path', prefix);
 
-      statusEl.textContent = 'Fetching repository tree...';
+      statusEl.textContent = 'Contacting GitHub API...';
 
       try {
         const headers = {
@@ -404,18 +684,15 @@
           'Accept': 'application/vnd.github.v3+json'
         };
 
-        // 1. Get default branch commit
         const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
-        if (!repoRes.ok) throw new Error('Repository lookup failed: ' + repoRes.statusText);
+        if (!repoRes.ok) throw new Error('Repository authentication failed: ' + repoRes.statusText);
         const repoData = await repoRes.json();
         const branch = repoData.default_branch;
 
-        // 2. Fetch entire git tree recursively
         const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees/${branch}?recursive=1`, { headers });
-        if (!treeRes.ok) throw new Error('Tree lookup failed');
+        if (!treeRes.ok) throw new Error('Failed to fetch tree structure');
         const treeData = await treeRes.json();
 
-        // 3. Filter markdown files inside specified folder
         const mdFiles = treeData.tree.filter(node => {
           if (node.type !== 'blob' || !node.path.endsWith('.md')) return false;
           if (prefix && !node.path.startsWith(prefix)) return false;
@@ -424,7 +701,6 @@
 
         statusEl.textContent = `Syncing ${mdFiles.length} files...`;
 
-        // 4. Fetch content for each file
         for (let i = 0; i < mdFiles.length; i++) {
           const file = mdFiles[i];
           const blobRes = await fetch(file.url, { headers });
@@ -438,18 +714,18 @@
             meta,
             content
           });
-          statusEl.textContent = `Downloaded ${i + 1}/${mdFiles.length}...`;
+          statusEl.textContent = `Synced ${i + 1}/${mdFiles.length}...`;
         }
 
-        statusEl.textContent = `Sync finished! ${mdFiles.length} files stored offline.`;
+        statusEl.textContent = `Sync complete: ${mdFiles.length} files indexed locally.`;
         await reloadData();
       } catch (err) {
-        statusEl.textContent = `Error: ${err.message}`;
+        statusEl.textContent = `Sync error: ${err.message}`;
       }
     }
 
     async function clearData() {
-      if (confirm('Clear local offline records?')) {
+      if (confirm('Delete local cached database?')) {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         tx.objectStore(STORE_NAME).clear();
         tx.oncomplete = async () => {
@@ -461,14 +737,15 @@
 
     async function reloadData() {
       allRecords = await getAllRecords();
+      updateSelectors();
       renderList();
     }
 
-    // Bootstrap
     window.addEventListener('DOMContentLoaded', async () => {
+      initTheme();
       await initDB();
       await reloadData();
-      if (allRecords.length === 0 && !localStorage.getItem('crm_pat')) {
+      if (allRecords.length === 0 && !localStorage.getItem('irolodex_pat')) {
         showSettings();
       }
     });

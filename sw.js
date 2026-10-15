@@ -1,4 +1,4 @@
-const CACHE_NAME = 'crm-cache-v1';
+const CACHE_NAME = 'irolodex-cache-v1';
 const ASSETS = [
   './',
   './index.html',
@@ -23,7 +23,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Let GitHub API calls pass directly through to network
   if (e.request.url.includes('api.github.com')) {
     return;
   }
