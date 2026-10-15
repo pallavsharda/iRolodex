@@ -562,34 +562,58 @@
       document.getElementById('view-detail').classList.add('active');
     }
 
-    // Taxonomy Extractors
+    // Taxonomy Extractors (Defensive against arrays, numbers, and nulls)
     function updateSelectors() {
       const categories = new Set();
       const tags = new Set();
 
-      allRecords.forEach(r => {
-        const cat = r.meta.category || r.meta.type;
-        if (cat) categories.add(cat.trim());
+      const addCategoryItem = (item) => {
+        if (!item) return;
+        if (Array.isArray(item)) {
+          item.forEach(addCategoryItem);
+        } else if (typeof item === 'string') {
+          const val = item.trim();
+          if (val) categories.add(val);
+        } else {
+          categories.add(String(item));
+        }
+      };
 
-        const t = r.meta.tags;
-        if (Array.isArray(t)) t.forEach(tag => tags.add(tag.trim()));
-        else if (t) t.split(',').forEach(tag => tags.add(tag.trim()));
+      const addTagItem = (item) => {
+        if (!item) return;
+        if (Array.isArray(item)) {
+          item.forEach(addTagItem);
+        } else if (typeof item === 'string') {
+          item.split(',').forEach(s => {
+            const val = s.trim();
+            if (val) tags.add(val);
+          });
+        } else {
+          tags.add(String(item));
+        }
+      };
+
+      allRecords.forEach(r => {
+        if (!r.meta) return;
+        const cat = r.meta.category || r.meta.type;
+        addCategoryItem(cat);
+        addTagItem(r.meta.tags);
       });
 
       // Render Category Row
       const catContainer = document.getElementById('category-pills');
-      const catList = ['all', ...Array.from(categories)];
+      const catList = ['all', ...Array.from(categories).sort()];
       catContainer.innerHTML = catList.map(cat => `
-        <button class="pill ${selectedCategory === cat ? 'active' : ''}" onclick="selectCategory('${cat}')">
+        <button class="pill ${selectedCategory === cat ? 'active' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}')">
           ${cat === 'all' ? 'All' : cat}
         </button>
       `).join('');
 
       // Render Tag Row
       const tagContainer = document.getElementById('tag-pills');
-      const tagList = ['all', ...Array.from(tags)];
+      const tagList = ['all', ...Array.from(tags).sort()];
       tagContainer.innerHTML = tagList.map(t => `
-        <button class="pill ${selectedTag === t ? 'active' : ''}" onclick="selectTag('${t}')">
+        <button class="pill ${selectedTag === t ? 'active' : ''}" onclick="selectTag('${t.replace(/'/g, "\\'")}')">
           ${t === 'all' ? 'All Tags' : '#' + t}
         </button>
       `).join('');

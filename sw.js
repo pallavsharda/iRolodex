@@ -1,4 +1,4 @@
-const CACHE_NAME = 'irolodex-cache-v1';
+const CACHE_NAME = 'irolodex-cache-v2';
 const ASSETS = [
   './',
   './index.html',
