@@ -386,7 +386,38 @@
       navigator.serviceWorker.register('sw.js');
     }
 
-    // Theme Engine
+    // --- Defensive Helpers for Schema Types ---
+    function normalizeArray(input) {
+      if (input === null || input === undefined) return [];
+      if (Array.isArray(input)) {
+        return input.flatMap(normalizeArray);
+      }
+      if (typeof input === 'string') {
+        return input.includes(',') 
+          ? input.split(',').map(s => s.trim()).filter(Boolean)
+          : [input.trim()].filter(Boolean);
+      }
+      return [String(input).trim()].filter(Boolean);
+    }
+
+    function normalizeString(input) {
+      if (input === null || input === undefined) return '';
+      if (Array.isArray(input)) return input.map(normalizeString).filter(Boolean).join(', ');
+      return String(input).trim();
+    }
+
+    function getRecordCategories(r) {
+      if (!r || !r.meta) return [];
+      const raw = r.meta.category !== undefined ? r.meta.category : r.meta.type;
+      return normalizeArray(raw);
+    }
+
+    function getRecordTags(r) {
+      if (!r || !r.meta) return [];
+      return normalizeArray(r.meta.tags);
+    }
+
+    // --- Theme Engine ---
     function initTheme() {
       const saved = localStorage.getItem('irolodex_theme') || 'system';
       applyTheme(saved);
@@ -404,7 +435,7 @@
       applyTheme(cur);
     }
 
-    // IndexedDB Setup
+    // --- IndexedDB Setup ---
     const DB_NAME = 'iRolodexDB';
     const STORE_NAME = 'records';
     let db;
@@ -439,7 +470,7 @@
       });
     }
 
-    // Markdown Frontmatter Parser
+    // --- Markdown Frontmatter Parser ---
     function parseFrontmatter(raw) {
       const match = raw.match(/^---\s*([\s\S]*?)\s*---\s*([\s\S]*)$/);
       if (!match) return { meta: {}, content: raw };
@@ -464,7 +495,7 @@
       return { meta, content };
     }
 
-    // Wikilink Parser: [[Note Name]] or [[Note Name|Alias]]
+    // --- Wikilink Parser: [[Target]] or [[Target|Alias]] ---
     function resolveWikilinks(markdownText) {
       return markdownText.replace(/\[\[([^\]\Vert{}]+)(?:\Vert{}([^\]]+))?\]\]/g, (match, target, alias) => {
         const cleanTarget = target.trim();
@@ -473,7 +504,7 @@
         const targetSlug = cleanTarget.toLowerCase();
         const found = allRecords.find(r => {
           const filename = r.path.split('/').pop().replace(/\.md$/i, '').toLowerCase();
-          const recordName = (r.meta.name || '').toLowerCase();
+          const recordName = normalizeString(r.meta ? r.meta.name : '').toLowerCase();
           return filename === targetSlug || recordName === targetSlug;
         });
 
@@ -485,7 +516,7 @@
       });
     }
 
-    // State & Navigation Stack
+    // --- Navigation State & History Stack ---
     let allRecords = [];
     let selectedCategory = 'all';
     let selectedTag = 'all';
@@ -527,16 +558,19 @@
       const item = allRecords.find(r => r.path === path);
       if (!item) return;
 
-      const title = item.meta.name || item.path.split('/').pop().replace(/\.md$/i, '');
-      const subtitle = [item.meta.role, item.meta.organization].filter(Boolean).join(' @ ');
-      const category = item.meta.category || item.meta.type;
+      const rawName = item.meta && item.meta.name ? item.meta.name : item.path.split('/').pop().replace(/\.md$/i, '');
+      const title = normalizeString(rawName);
+      const role = normalizeString(item.meta ? item.meta.role : '');
+      const org = normalizeString(item.meta ? item.meta.organization : '');
+      const subtitle = [role, org].filter(Boolean).join(' @ ');
+      const categories = getRecordCategories(item);
 
       document.getElementById('det-name').textContent = title;
       document.getElementById('det-sub').textContent = subtitle;
 
       const catBadge = document.getElementById('det-category-badge');
-      if (category) {
-        catBadge.textContent = category;
+      if (categories.length > 0) {
+        catBadge.textContent = categories.join(', ');
         catBadge.style.display = 'block';
       } else {
         catBadge.style.display = 'none';
@@ -544,76 +578,48 @@
 
       // Metadata card
       const excludeKeys = ['name', 'role', 'organization', 'type', 'category', 'tags'];
-      const metaRows = Object.entries(item.meta)
+      const metaRows = Object.entries(item.meta || {})
         .filter(([k]) => !excludeKeys.includes(k))
         .map(([k, v]) => `
           <div class="meta-row">
             <span class="meta-label">${k.charAt(0).toUpperCase() + k.slice(1)}</span>
-            <span class="meta-val">${Array.isArray(v) ? v.join(', ') : v}</span>
+            <span class="meta-val">${Array.isArray(v) ? v.join(', ') : normalizeString(v)}</span>
           </div>
         `).join('');
 
       document.getElementById('det-meta').innerHTML = metaRows || '<div style="color:var(--text-muted); text-align:center;">No custom metadata attributes</div>';
 
-      const linkedContent = resolveWikilinks(item.content);
+      const linkedContent = resolveWikilinks(item.content || '');
       document.getElementById('det-content').innerHTML = marked.parse(linkedContent);
 
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-detail').classList.add('active');
     }
 
-    // Taxonomy Extractors (Defensive against arrays, numbers, and nulls)
+    // --- Taxonomy Selectors ---
     function updateSelectors() {
       const categories = new Set();
       const tags = new Set();
 
-      const addCategoryItem = (item) => {
-        if (!item) return;
-        if (Array.isArray(item)) {
-          item.forEach(addCategoryItem);
-        } else if (typeof item === 'string') {
-          const val = item.trim();
-          if (val) categories.add(val);
-        } else {
-          categories.add(String(item));
-        }
-      };
-
-      const addTagItem = (item) => {
-        if (!item) return;
-        if (Array.isArray(item)) {
-          item.forEach(addTagItem);
-        } else if (typeof item === 'string') {
-          item.split(',').forEach(s => {
-            const val = s.trim();
-            if (val) tags.add(val);
-          });
-        } else {
-          tags.add(String(item));
-        }
-      };
-
       allRecords.forEach(r => {
-        if (!r.meta) return;
-        const cat = r.meta.category || r.meta.type;
-        addCategoryItem(cat);
-        addTagItem(r.meta.tags);
+        getRecordCategories(r).forEach(cat => categories.add(cat));
+        getRecordTags(r).forEach(tag => tags.add(tag));
       });
 
       // Render Category Row
       const catContainer = document.getElementById('category-pills');
-      const catList = ['all', ...Array.from(categories).sort()];
+      const catList = ['all', ...Array.from(categories).sort((a, b) => a.localeCompare(b))];
       catContainer.innerHTML = catList.map(cat => `
-        <button class="pill ${selectedCategory === cat ? 'active' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}')">
+        <button class="pill ${selectedCategory.toLowerCase() === cat.toLowerCase() ? 'active' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}')">
           ${cat === 'all' ? 'All' : cat}
         </button>
       `).join('');
 
       // Render Tag Row
       const tagContainer = document.getElementById('tag-pills');
-      const tagList = ['all', ...Array.from(tags).sort()];
+      const tagList = ['all', ...Array.from(tags).sort((a, b) => a.localeCompare(b))];
       tagContainer.innerHTML = tagList.map(t => `
-        <button class="pill ${selectedTag === t ? 'active' : ''}" onclick="selectTag('${t.replace(/'/g, "\\'")}')">
+        <button class="pill ${selectedTag.toLowerCase() === t.toLowerCase() ? 'active' : ''}" onclick="selectTag('${t.replace(/'/g, "\\'")}')">
           ${t === 'all' ? 'All Tags' : '#' + t}
         </button>
       `).join('');
@@ -636,25 +642,30 @@
     }
 
     function renderList() {
-      const q = document.getElementById('search-input').value.toLowerCase();
+      const q = document.getElementById('search-input').value.toLowerCase().trim();
       const container = document.getElementById('contacts-container');
 
       const filtered = allRecords.filter(r => {
-        const cat = (r.meta.category || r.meta.type || '').toLowerCase();
-        if (selectedCategory !== 'all' && cat !== selectedCategory.toLowerCase()) return false;
+        const categories = getRecordCategories(r).map(c => c.toLowerCase());
+        if (selectedCategory !== 'all') {
+          if (!categories.includes(selectedCategory.toLowerCase())) return false;
+        }
 
-        const recordTags = Array.isArray(r.meta.tags) 
-          ? r.meta.tags.map(t => t.toLowerCase()) 
-          : (r.meta.tags ? [r.meta.tags.toLowerCase()] : []);
-        if (selectedTag !== 'all' && !recordTags.includes(selectedTag.toLowerCase())) return false;
+        const tags = getRecordTags(r).map(t => t.toLowerCase());
+        if (selectedTag !== 'all') {
+          if (!tags.includes(selectedTag.toLowerCase())) return false;
+        }
 
         if (!q) return true;
-        const name = (r.meta.name || r.path).toLowerCase();
-        const org = (r.meta.organization || '').toLowerCase();
-        const role = (r.meta.role || '').toLowerCase();
-        const tagsStr = recordTags.join(' ');
+
+        const name = normalizeString(r.meta && r.meta.name ? r.meta.name : r.path).toLowerCase();
+        const org = normalizeString(r.meta ? r.meta.organization : '').toLowerCase();
+        const role = normalizeString(r.meta ? r.meta.role : '').toLowerCase();
+        const tagsStr = tags.join(' ');
+        const catStr = categories.join(' ');
         const body = (r.content || '').toLowerCase();
-        return name.includes(q) || org.includes(q) || role.includes(q) || tagsStr.includes(q) || body.includes(q);
+
+        return name.includes(q) || org.includes(q) || role.includes(q) || tagsStr.includes(q) || catStr.includes(q) || body.includes(q);
       });
 
       if (filtered.length === 0) {
@@ -663,16 +674,19 @@
       }
 
       container.innerHTML = filtered.map(r => {
-        const title = r.meta.name || r.path.split('/').pop().replace(/\.md$/i, '');
-        const sub = [r.meta.role, r.meta.organization].filter(Boolean).join(' @ ');
-        const category = r.meta.category || r.meta.type || '';
-        const tags = Array.isArray(r.meta.tags) ? r.meta.tags : (r.meta.tags ? [r.meta.tags] : []);
+        const rawName = r.meta && r.meta.name ? r.meta.name : r.path.split('/').pop().replace(/\.md$/i, '');
+        const title = normalizeString(rawName);
+        const role = normalizeString(r.meta ? r.meta.role : '');
+        const org = normalizeString(r.meta ? r.meta.organization : '');
+        const sub = [role, org].filter(Boolean).join(' @ ');
+        const categories = getRecordCategories(r);
+        const tags = getRecordTags(r);
 
         return `
           <div class="card" onclick="navigateToDetail('${r.path}')">
             <div class="card-top-row">
               <div class="card-title">${title}</div>
-              ${category ? `<div class="card-category">${category}</div>` : ''}
+              ${categories.length > 0 ? `<div class="card-category">${categories.join(', ')}</div>` : ''}
             </div>
             ${sub ? `<div class="card-subtitle">${sub}</div>` : ''}
             ${tags.length > 0 ? `
