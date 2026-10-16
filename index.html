@@ -307,7 +307,8 @@
     }
 
     [data-theme="dark"] .btn { color: #000000; }
-    .btn.danger { background: #ef4444; color: #ffffff; margin-top: 10px; }
+    .btn.secondary { background: var(--pill-bg); color: var(--text); border: 1px solid var(--border); }
+    .btn.danger { background: #ef4444; color: #ffffff; }
   </style>
 </head>
 <body>
@@ -360,7 +361,10 @@
       <span class="brand-title" style="font-size: 1rem;">Configuration</span>
       <div style="width: 48px;"></div>
     </header>
-    <main style="display: flex; flex-direction: column; gap: 14px; padding-top: 20px;">
+    <main style="display: flex; flex-direction: column; gap: 14px; padding-top: 14px;">
+      <div style="font-size: 0.75rem; color: var(--accent); font-weight: 600; text-align: center;">
+        App Build: v4 (Hardened)
+      </div>
       <div>
         <label style="font-size: 0.8rem; color: var(--text-muted);">Personal Access Token (Read-only)</label>
         <input type="password" id="cfg-pat" placeholder="github_pat_...">
@@ -373,25 +377,38 @@
         <label style="font-size: 0.8rem; color: var(--text-muted);">Notes Subfolder (optional)</label>
         <input type="text" id="cfg-path" placeholder="e.g. contacts or crm">
       </div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;" id="cfg-status">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="cfg-status">
         Database ready.
       </div>
       <button class="btn" onclick="syncGithub()">Sync Now from GitHub</button>
+      <button class="btn secondary" onclick="forceAppRefresh()">Purge Cache & Reload</button>
       <button class="btn danger" onclick="clearData()">Clear Local Database</button>
     </main>
   </div>
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+      navigator.serviceWorker.register('sw.js?v=4');
     }
 
-    // --- Defensive Helpers for Schema Types ---
+    async function forceAppRefresh() {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let r of registrations) {
+          await r.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      window.location.reload(true);
+    }
+
+    // Defensive Helpers
     function normalizeArray(input) {
       if (input === null || input === undefined) return [];
-      if (Array.isArray(input)) {
-        return input.flatMap(normalizeArray);
-      }
+      if (Array.isArray(input)) return input.flatMap(normalizeArray);
       if (typeof input === 'string') {
         return input.includes(',') 
           ? input.split(',').map(s => s.trim()).filter(Boolean)
@@ -417,7 +434,7 @@
       return normalizeArray(r.meta.tags);
     }
 
-    // --- Theme Engine ---
+    // Theme Engine
     function initTheme() {
       const saved = localStorage.getItem('irolodex_theme') || 'system';
       applyTheme(saved);
@@ -435,7 +452,7 @@
       applyTheme(cur);
     }
 
-    // --- IndexedDB Setup ---
+    // IndexedDB Setup
     const DB_NAME = 'iRolodexDB';
     const STORE_NAME = 'records';
     let db;
@@ -470,7 +487,7 @@
       });
     }
 
-    // --- Markdown Frontmatter Parser ---
+    // Frontmatter Parser
     function parseFrontmatter(raw) {
       const match = raw.match(/^---\s*([\s\S]*?)\s*---\s*([\s\S]*)$/);
       if (!match) return { meta: {}, content: raw };
@@ -495,9 +512,9 @@
       return { meta, content };
     }
 
-    // --- Wikilink Parser: [[Target]] or [[Target|Alias]] ---
+    // Wikilink Parser
     function resolveWikilinks(markdownText) {
-      return markdownText.replace(/\[\[([^\]\Vert{}]+)(?:\Vert{}([^\]]+))?\]\]/g, (match, target, alias) => {
+      return markdownText.replace(/\[\[([^\]\vert{}]+)(?:\Vert{}([^\]]+))?\]\]/g, (match, target, alias) => {
         const cleanTarget = target.trim();
         const displayLabel = (alias || cleanTarget).trim();
         
@@ -516,7 +533,7 @@
       });
     }
 
-    // --- Navigation State & History Stack ---
+    // State & Navigation Stack
     let allRecords = [];
     let selectedCategory = 'all';
     let selectedTag = 'all';
@@ -576,7 +593,6 @@
         catBadge.style.display = 'none';
       }
 
-      // Metadata card
       const excludeKeys = ['name', 'role', 'organization', 'type', 'category', 'tags'];
       const metaRows = Object.entries(item.meta || {})
         .filter(([k]) => !excludeKeys.includes(k))
@@ -596,7 +612,7 @@
       document.getElementById('view-detail').classList.add('active');
     }
 
-    // --- Taxonomy Selectors ---
+    // Taxonomy Selectors
     function updateSelectors() {
       const categories = new Set();
       const tags = new Set();
@@ -606,7 +622,6 @@
         getRecordTags(r).forEach(tag => tags.add(tag));
       });
 
-      // Render Category Row
       const catContainer = document.getElementById('category-pills');
       const catList = ['all', ...Array.from(categories).sort((a, b) => a.localeCompare(b))];
       catContainer.innerHTML = catList.map(cat => `
@@ -615,7 +630,6 @@
         </button>
       `).join('');
 
-      // Render Tag Row
       const tagContainer = document.getElementById('tag-pills');
       const tagList = ['all', ...Array.from(tags).sort((a, b) => a.localeCompare(b))];
       tagContainer.innerHTML = tagList.map(t => `
